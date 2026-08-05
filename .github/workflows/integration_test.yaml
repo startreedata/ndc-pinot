@@ -67,6 +67,30 @@ jobs:
       - name: Seed sample "orders" table
         run: ./tests/pinot-db/init/seed.sh
 
+      # seed.sh returns as soon as the segment *push* is accepted, but the Pinot
+      # server needs a moment to load that segment before its rows are
+      # queryable. Poll the broker until the seeded rows actually show up, so
+      # the smoke test's data assertions are deterministic rather than racing
+      # ingestion.
+      - name: Wait for seeded data to be queryable
+        run: |
+          echo "==> Waiting for the 5 seeded rows to be queryable via the broker"
+          for i in $(seq 1 30); do
+            count="$(curl -s -H 'Content-Type: application/json' \
+              -d '{"sql":"select count(*) from orders"}' \
+              "${PINOT_BROKER_URL}/query/sql" \
+              | jq -r '.resultTable.rows[0][0] // 0')"
+            if [ "$count" = "5" ]; then
+              echo "    data queryable after $((i * 2))s (count=${count})"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::seeded data did not become queryable in time (last count=${count:-unknown})"
+          curl -s -H 'Content-Type: application/json' \
+            -d '{"sql":"select count(*) from orders"}' "${PINOT_BROKER_URL}/query/sql" || true
+          exit 1
+
       - name: Start connector
         run: |
           HASURA_CONFIGURATION_DIRECTORY="${GITHUB_WORKSPACE}/tests/config" \
