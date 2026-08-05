@@ -1,0 +1,6 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: err.to_string()
+input_file: crates/ndc-pinot-core/tests/query_builder/unsupported/05_nested_field_selection.request.json
+---
+selecting nested object/array fields is not supported

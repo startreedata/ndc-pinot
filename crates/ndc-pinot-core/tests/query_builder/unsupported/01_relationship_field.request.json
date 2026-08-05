@@ -1,0 +1,30 @@
+{
+  "collection": "orders",
+  "query": {
+    "fields": {
+      "orderId": { "type": "column", "column": "orderId", "fields": null },
+      "relatedOrders": {
+        "type": "relationship",
+        "query": {
+          "fields": null,
+          "aggregates": null,
+          "limit": null,
+          "offset": null,
+          "order_by": null,
+          "predicate": null
+        },
+        "relationship": "sameCustomerOrders",
+        "arguments": {}
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {
+    "sameCustomerOrders": {
+      "column_mapping": { "customerId": "customerId" },
+      "relationship_type": "array",
+      "target_collection": "orders",
+      "arguments": {}
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packagingDefinition:
+  type: PrebuiltDockerImage
+  dockerImage: "${DOCKER_IMAGE}"
+supportedEnvironmentVariables:
+  - name: PINOT_CONTROLLER_URL
+    description: The Apache Pinot Controller REST API base URL
+    defaultValue: ""
+    required: true
+  - name: PINOT_BROKER_URL
+    description: The Apache Pinot Broker REST API base URL
+    defaultValue: ""
+    required: true
+  - name: PINOT_AUTH_HEADER
+    description: The verbatim `Authorization` header value for deployments that require auth, e.g. `Basic <base64>` or `Bearer <token>`
+    defaultValue: ""
+    required: false
+commands:
+  update: hasura-pinot update
+  printSchemaAndCapabilities: hasura-pinot print-schema-and-capabilities
+cliPlugin:
+  name: pinot
+  version: "${CLI_VERSION}"
+dockerComposeWatch:
+  - path: ./
+    target: /etc/connector
+    action: sync+restart
+documentationPage: https://hasura.io/connectors/pinot
+
+

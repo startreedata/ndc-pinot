@@ -1,0 +1,19 @@
+{
+  "collection": "orders",
+  "query": {
+    "fields": {
+      "status": {
+        "type": "column",
+        "column": "status",
+        "fields": {
+          "type": "object",
+          "fields": {
+            "subField": { "type": "column", "column": "subField", "fields": null }
+          }
+        }
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

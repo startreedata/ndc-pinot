@@ -1,0 +1,13 @@
+[package]
+name = "ndc-pinot"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "ndc-pinot"
+path = "src/main.rs"
+
+[dependencies]
+ndc-pinot-core = { path = "../ndc-pinot-core" }
+ndc-sdk = { workspace = true }
+tokio = { version = "1", features = ["full"] }

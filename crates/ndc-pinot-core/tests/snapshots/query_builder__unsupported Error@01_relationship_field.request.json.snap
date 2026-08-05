@@ -1,0 +1,6 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: err.to_string()
+input_file: crates/ndc-pinot-core/tests/query_builder/unsupported/01_relationship_field.request.json
+---
+relationship fields are not supported: this connector has no relationships capability

@@ -1,0 +1,14 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: pretty_print_sql(&rows.to_string())
+input_file: crates/ndc-pinot-core/tests/query_builder/variables/01_predicate_variable.request.json
+---
+SET
+  enableNullHandling = true;
+SELECT
+  "orderId" AS "orderId",
+  "status" AS "status"
+FROM
+  "orders"
+WHERE
+  "status" = 'CANCELLED'

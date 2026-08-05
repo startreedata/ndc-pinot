@@ -1,0 +1,24 @@
+{
+  "collection": "orders",
+  "query": {
+    "fields": {
+      "orderId": { "type": "column", "column": "orderId", "fields": null },
+      "status": { "type": "column", "column": "status", "fields": null },
+      "total": { "type": "column", "column": "total", "fields": null }
+    },
+    "order_by": {
+      "elements": [
+        {
+          "order_direction": "asc",
+          "target": { "type": "column", "name": "status", "field_path": null, "path": [] }
+        },
+        {
+          "order_direction": "desc",
+          "target": { "type": "column", "name": "total", "field_path": null, "path": [] }
+        }
+      ]
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

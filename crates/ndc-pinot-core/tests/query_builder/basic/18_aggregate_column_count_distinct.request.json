@@ -1,0 +1,15 @@
+{
+  "collection": "orders",
+  "query": {
+    "aggregates": {
+      "distinctCustomerCount": {
+        "type": "column_count",
+        "column": "customerId",
+        "field_path": null,
+        "distinct": true
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

@@ -1,0 +1,21 @@
+{
+  "collection": "orders",
+  "variables": [
+    { "status": "SHIPPED" },
+    { "status": "CANCELLED" }
+  ],
+  "query": {
+    "fields": {
+      "orderId": { "type": "column", "column": "orderId", "fields": null },
+      "status": { "type": "column", "column": "status", "fields": null }
+    },
+    "predicate": {
+      "type": "binary_comparison_operator",
+      "column": { "type": "column", "name": "status", "field_path": null, "path": [] },
+      "operator": "_eq",
+      "value": { "type": "variable", "name": "status" }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

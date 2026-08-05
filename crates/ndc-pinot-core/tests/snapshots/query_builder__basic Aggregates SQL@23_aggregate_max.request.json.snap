@@ -1,0 +1,11 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: pretty_print_sql(&aggregates.to_string())
+input_file: crates/ndc-pinot-core/tests/query_builder/basic/23_aggregate_max.request.json
+---
+SET
+  enableNullHandling = true;
+SELECT
+  MAX("total") AS "totalMax"
+FROM
+  "orders"

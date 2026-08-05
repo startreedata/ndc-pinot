@@ -1,0 +1,15 @@
+{
+  "collection": "orders",
+  "query": {
+    "aggregates": {
+      "totalMin": {
+        "type": "single_column",
+        "column": "total",
+        "field_path": null,
+        "function": "min"
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

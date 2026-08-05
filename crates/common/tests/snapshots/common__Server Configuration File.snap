@@ -1,0 +1,105 @@
+---
+source: crates/common/tests/common.rs
+expression: schema_for!(ServerConfigFile)
+---
+$schema: "http://json-schema.org/draft-07/schema#"
+title: ServerConfigFile
+description: "The on-disk shape of `configuration.json`.\n\nPinot has no views/parameterized-table concept, so table configs carry no `arguments`, and there is no `ReturnType::TableReference`/`QueryReference` sharing mechanism - every collection (table or native query) declares its own flat column set."
+type: object
+required:
+  - $schema
+properties:
+  $schema:
+    type: string
+  tables:
+    description: "Pinot tables exposed as NDC collections, keyed by the alias used in the graph."
+    default: {}
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/TableConfigFile"
+  queries:
+    description: Hand-written Pinot SQL queries exposed as read-only NDC collections.
+    default: {}
+    type: object
+    additionalProperties:
+      $ref: "#/definitions/NativeQueryConfigFile"
+definitions:
+  TableConfigFile:
+    type: object
+    required:
+      - columns
+      - name
+    properties:
+      name:
+        description: "The real Pinot table name, without the `_OFFLINE`/`_REALTIME` type suffix."
+        type: string
+      comment:
+        type:
+          - string
+          - "null"
+      primary_key:
+        anyOf:
+          - $ref: "#/definitions/PrimaryKey"
+          - type: "null"
+      columns:
+        description: "Column name -> Pinot data type, as reported by the Controller's schema endpoint."
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/PinotColumnType"
+  PrimaryKey:
+    type: object
+    required:
+      - columns
+    properties:
+      columns:
+        description: "The Pinot upsert table's `primaryKeyColumns`, if this is an upsert table."
+        type: array
+        items:
+          type: string
+  PinotColumnType:
+    description: "The resolved type of a Pinot column: its scalar type, whether it is a Pinot \"multi-value\" (array) field, and whether it may contain nulls.\n\nMulti-value columns in Pinot are always flat arrays of scalars - Pinot has no concept of arrays-of-structs, so this is a much simpler shape than a fully general nested-type system would need."
+    type: object
+    required:
+      - scalar_type
+    properties:
+      scalar_type:
+        $ref: "#/definitions/PinotScalarType"
+      is_multi_value:
+        default: false
+        type: boolean
+      nullable:
+        default: true
+        type: boolean
+  PinotScalarType:
+    type: string
+  NativeQueryConfigFile:
+    type: object
+    required:
+      - columns
+      - exposed_as
+      - file
+    properties:
+      exposed_as:
+        $ref: "#/definitions/NativeQueryExposedAs"
+      comment:
+        type:
+          - string
+          - "null"
+      file:
+        description: "Relative path (from the configuration directory) to a `.sql` file.\n\nThe file may reference arguments using `{{argument_name}}` placeholders, which are substituted with escaped SQL literals at query time."
+        type: string
+      arguments:
+        description: "Declared argument types, substituted into `{{name}}` placeholders in `file`."
+        default: {}
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/PinotColumnType"
+      columns:
+        description: The shape of a single result row.
+        type: object
+        additionalProperties:
+          $ref: "#/definitions/PinotColumnType"
+  NativeQueryExposedAs:
+    type: string
+    enum:
+      - collection

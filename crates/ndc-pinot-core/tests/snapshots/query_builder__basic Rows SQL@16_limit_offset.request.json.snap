@@ -1,0 +1,13 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: pretty_print_sql(&rows.to_string())
+input_file: crates/ndc-pinot-core/tests/query_builder/basic/16_limit_offset.request.json
+---
+SET
+  enableNullHandling = true;
+SELECT
+  "orderId" AS "orderId"
+FROM
+  "orders"
+LIMIT
+  10 OFFSET 20

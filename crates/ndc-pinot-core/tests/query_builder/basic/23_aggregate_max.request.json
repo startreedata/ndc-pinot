@@ -1,0 +1,15 @@
+{
+  "collection": "orders",
+  "query": {
+    "aggregates": {
+      "totalMax": {
+        "type": "single_column",
+        "column": "total",
+        "field_path": null,
+        "function": "max"
+      }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

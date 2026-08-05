@@ -1,0 +1,21 @@
+{
+  "tableName": "orders",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "createdAt",
+    "timeType": "MILLISECONDS",
+    "replication": "1",
+    "schemaName": "orders"
+  },
+  "tenants": {},
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "ingestionConfig": {
+    "batchIngestionConfig": {
+      "segmentIngestionType": "APPEND",
+      "segmentIngestionFrequency": "DAILY"
+    }
+  },
+  "metadata": {}
+}

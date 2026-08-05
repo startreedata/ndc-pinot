@@ -1,0 +1,30 @@
+{
+  "collection": "orders",
+  "query": {
+    "fields": {
+      "orderId": { "type": "column", "column": "orderId", "fields": null }
+    },
+    "predicate": {
+      "type": "binary_comparison_operator",
+      "column": {
+        "type": "column",
+        "name": "total",
+        "field_path": null,
+        "path": [
+          { "relationship": "sameCustomerOrders", "arguments": {}, "predicate": null }
+        ]
+      },
+      "operator": "_eq",
+      "value": { "type": "scalar", "value": 100 }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {
+    "sameCustomerOrders": {
+      "column_mapping": { "customerId": "customerId" },
+      "relationship_type": "array",
+      "target_collection": "orders",
+      "arguments": {}
+    }
+  }
+}

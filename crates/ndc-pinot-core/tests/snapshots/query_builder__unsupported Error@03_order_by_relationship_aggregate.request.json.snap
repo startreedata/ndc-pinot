@@ -1,0 +1,6 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: err.to_string()
+input_file: crates/ndc-pinot-core/tests/query_builder/unsupported/03_order_by_relationship_aggregate.request.json
+---
+ordering by a relationship aggregate is not supported: this connector has no relationships capability

@@ -1,0 +1,22 @@
+{
+  "$schema": "../../configuration.schema.json",
+  "tables": {
+    "orders": {
+      "name": "orders",
+      "comment": "Customer orders, one row per order.",
+      "primary_key": {
+        "columns": ["orderId"]
+      },
+      "columns": {
+        "orderId": { "scalar_type": "LONG", "is_multi_value": false, "nullable": false },
+        "customerId": { "scalar_type": "STRING", "is_multi_value": false, "nullable": true },
+        "total": { "scalar_type": "DOUBLE", "is_multi_value": false, "nullable": true },
+        "status": { "scalar_type": "STRING", "is_multi_value": false, "nullable": true },
+        "tags": { "scalar_type": "STRING", "is_multi_value": true, "nullable": true },
+        "createdAt": { "scalar_type": "TIMESTAMP", "is_multi_value": false, "nullable": true },
+        "isPriority": { "scalar_type": "BOOLEAN", "is_multi_value": false, "nullable": true }
+      }
+    }
+  },
+  "queries": {}
+}

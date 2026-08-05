@@ -1,0 +1,17 @@
+{
+  "collection": "orders",
+  "query": {
+    "fields": {
+      "orderId": { "type": "column", "column": "orderId", "fields": null },
+      "customerId": { "type": "column", "column": "customerId", "fields": null }
+    },
+    "predicate": {
+      "type": "binary_comparison_operator",
+      "column": { "type": "column", "name": "customerId", "field_path": null, "path": [] },
+      "operator": "_like",
+      "value": { "type": "scalar", "value": "CUST-%" }
+    }
+  },
+  "arguments": {},
+  "collection_relationships": {}
+}

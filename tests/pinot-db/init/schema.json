@@ -1,0 +1,20 @@
+{
+  "schemaName": "orders",
+  "dimensionFieldSpecs": [
+    { "name": "orderId", "dataType": "STRING" },
+    { "name": "customerId", "dataType": "STRING" },
+    { "name": "status", "dataType": "STRING" },
+    { "name": "tags", "dataType": "STRING", "singleValueField": false }
+  ],
+  "metricFieldSpecs": [
+    { "name": "total", "dataType": "DOUBLE" }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "createdAt",
+      "dataType": "LONG",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}

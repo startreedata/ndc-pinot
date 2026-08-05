@@ -1,0 +1,561 @@
+{
+  "version": "v2",
+  "supergraph": {
+    "objects": [
+      {
+        "kind": "GraphqlConfig",
+        "version": "v1",
+        "definition": {
+          "query": {
+            "rootOperationTypeName": "Query",
+            "argumentsInput": {
+              "fieldName": "args"
+            },
+            "limitInput": {
+              "fieldName": "limit"
+            },
+            "offsetInput": {
+              "fieldName": "offset"
+            },
+            "filterInput": {
+              "fieldName": "where",
+              "operatorNames": {
+                "and": "_and",
+                "or": "_or",
+                "not": "_not",
+                "isNull": "_is_null"
+              }
+            },
+            "orderByInput": {
+              "fieldName": "order_by",
+              "enumDirectionValues": {
+                "asc": "Asc",
+                "desc": "Desc"
+              },
+              "enumTypeNames": [
+                {
+                  "directions": [
+                    "Asc",
+                    "Desc"
+                  ],
+                  "typeName": "OrderBy"
+                }
+              ]
+            }
+          },
+          "mutation": {
+            "rootOperationTypeName": "Mutation"
+          }
+        }
+      }
+    ]
+  },
+  "subgraphs": [
+    {
+      "name": "app",
+      "objects": [
+        {
+          "kind": "DataConnectorLink",
+          "version": "v1",
+          "definition": {
+            "name": "pinot",
+            "url": {
+              "singleUrl": {
+                "value": "http://ndc-pinot:5000"
+              }
+            },
+            "schema": {
+              "version": "v0.1",
+              "schema": {
+                "scalar_types": {
+                  "STRING": {
+                    "representation": {
+                      "type": "string"
+                    },
+                    "aggregate_functions": {},
+                    "comparison_operators": {
+                      "_eq": {
+                        "type": "equal"
+                      },
+                      "_neq": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "STRING"
+                        }
+                      },
+                      "_in": {
+                        "type": "in"
+                      }
+                    }
+                  },
+                  "LONG": {
+                    "representation": {
+                      "type": "int64"
+                    },
+                    "aggregate_functions": {
+                      "min": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      },
+                      "max": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      },
+                      "sum": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      },
+                      "avg": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      }
+                    },
+                    "comparison_operators": {
+                      "_eq": {
+                        "type": "equal"
+                      },
+                      "_gt": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      },
+                      "_gte": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      },
+                      "_lt": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      },
+                      "_lte": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      }
+                    }
+                  },
+                  "DOUBLE": {
+                    "representation": {
+                      "type": "float64"
+                    },
+                    "aggregate_functions": {
+                      "min": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "max": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "sum": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "avg": {
+                        "result_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      }
+                    },
+                    "comparison_operators": {
+                      "_eq": {
+                        "type": "equal"
+                      },
+                      "_gt": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "_gte": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "_lt": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "_lte": {
+                        "type": "custom",
+                        "argument_type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      }
+                    }
+                  }
+                },
+                "object_types": {
+                  "orders": {
+                    "fields": {
+                      "orderId": {
+                        "type": {
+                          "type": "named",
+                          "name": "STRING"
+                        }
+                      },
+                      "customerId": {
+                        "type": {
+                          "type": "named",
+                          "name": "STRING"
+                        }
+                      },
+                      "status": {
+                        "type": {
+                          "type": "named",
+                          "name": "STRING"
+                        }
+                      },
+                      "tags": {
+                        "type": {
+                          "type": "nullable",
+                          "underlying_type": {
+                            "type": "array",
+                            "element_type": {
+                              "type": "named",
+                              "name": "STRING"
+                            }
+                          }
+                        }
+                      },
+                      "total": {
+                        "type": {
+                          "type": "named",
+                          "name": "DOUBLE"
+                        }
+                      },
+                      "createdAt": {
+                        "type": {
+                          "type": "named",
+                          "name": "LONG"
+                        }
+                      }
+                    }
+                  }
+                },
+                "collections": [
+                  {
+                    "name": "orders",
+                    "description": "",
+                    "arguments": {},
+                    "type": "orders",
+                    "uniqueness_constraints": {
+                      "orderId": {
+                        "unique_columns": [
+                          "orderId"
+                        ]
+                      }
+                    },
+                    "foreign_keys": {}
+                  }
+                ],
+                "functions": [],
+                "procedures": []
+              },
+              "capabilities": {
+                "version": "^0.1.1",
+                "capabilities": {
+                  "query": {
+                    "aggregates": {},
+                    "variables": {},
+                    "explain": {}
+                  },
+                  "mutation": {},
+                  "relationships": {
+                    "relation_comparisons": {},
+                    "order_by_aggregate": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "kind": "DataConnectorScalarRepresentation",
+          "version": "v1",
+          "definition": {
+            "graphql": {
+              "comparisonExpressionTypeName": "App_StringComparisonExp"
+            },
+            "dataConnectorName": "pinot",
+            "dataConnectorScalarType": "STRING",
+            "representation": "String"
+          }
+        },
+        {
+          "kind": "DataConnectorScalarRepresentation",
+          "version": "v1",
+          "definition": {
+            "graphql": {
+              "comparisonExpressionTypeName": "App_LongComparisonExp"
+            },
+            "dataConnectorName": "pinot",
+            "dataConnectorScalarType": "LONG",
+            "representation": "Int64"
+          }
+        },
+        {
+          "kind": "DataConnectorScalarRepresentation",
+          "version": "v1",
+          "definition": {
+            "graphql": {
+              "comparisonExpressionTypeName": "App_DoubleComparisonExp"
+            },
+            "dataConnectorName": "pinot",
+            "dataConnectorScalarType": "DOUBLE",
+            "representation": "Float64"
+          }
+        },
+        {
+          "kind": "ObjectType",
+          "version": "v1",
+          "definition": {
+            "name": "Orders",
+            "fields": [
+              {
+                "name": "orderId",
+                "type": "String!"
+              },
+              {
+                "name": "customerId",
+                "type": "String!"
+              },
+              {
+                "name": "status",
+                "type": "String!"
+              },
+              {
+                "name": "tags",
+                "type": "[String!]"
+              },
+              {
+                "name": "total",
+                "type": "Float64!"
+              },
+              {
+                "name": "createdAt",
+                "type": "Int64!"
+              }
+            ],
+            "graphql": {
+              "typeName": "App_Orders",
+              "inputTypeName": "App_OrdersInput"
+            },
+            "dataConnectorTypeMapping": [
+              {
+                "dataConnectorName": "pinot",
+                "dataConnectorObjectType": "orders",
+                "fieldMapping": {
+                  "orderId": {
+                    "column": {
+                      "name": "orderId"
+                    }
+                  },
+                  "customerId": {
+                    "column": {
+                      "name": "customerId"
+                    }
+                  },
+                  "status": {
+                    "column": {
+                      "name": "status"
+                    }
+                  },
+                  "tags": {
+                    "column": {
+                      "name": "tags"
+                    }
+                  },
+                  "total": {
+                    "column": {
+                      "name": "total"
+                    }
+                  },
+                  "createdAt": {
+                    "column": {
+                      "name": "createdAt"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "TypePermissions",
+          "version": "v1",
+          "definition": {
+            "typeName": "Orders",
+            "permissions": [
+              {
+                "role": "admin",
+                "output": {
+                  "allowedFields": [
+                    "orderId",
+                    "customerId",
+                    "status",
+                    "tags",
+                    "total",
+                    "createdAt"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ObjectBooleanExpressionType",
+          "version": "v1",
+          "definition": {
+            "name": "OrdersBoolExp",
+            "graphql": {
+              "typeName": "App_OrdersBoolExp"
+            },
+            "objectType": "Orders",
+            "dataConnectorName": "pinot",
+            "dataConnectorObjectType": "orders",
+            "comparableFields": [
+              {
+                "fieldName": "orderId",
+                "operators": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "customerId",
+                "operators": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "status",
+                "operators": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "total",
+                "operators": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "createdAt",
+                "operators": {
+                  "enableAll": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "Model",
+          "version": "v1",
+          "definition": {
+            "name": "Orders",
+            "graphql": {
+              "selectUniques": [
+                {
+                  "queryRootField": "app_ordersByOrderId",
+                  "uniqueIdentifier": [
+                    "orderId"
+                  ]
+                }
+              ],
+              "selectMany": {
+                "queryRootField": "app_orders"
+              },
+              "orderByExpressionType": "App_OrdersOrderBy"
+            },
+            "objectType": "Orders",
+            "source": {
+              "dataConnectorName": "pinot",
+              "collection": "orders"
+            },
+            "filterExpressionType": "OrdersBoolExp",
+            "orderableFields": [
+              {
+                "fieldName": "orderId",
+                "orderByDirections": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "customerId",
+                "orderByDirections": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "status",
+                "orderByDirections": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "total",
+                "orderByDirections": {
+                  "enableAll": true
+                }
+              },
+              {
+                "fieldName": "createdAt",
+                "orderByDirections": {
+                  "enableAll": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "kind": "ModelPermissions",
+          "version": "v1",
+          "definition": {
+            "modelName": "Orders",
+            "permissions": [
+              {
+                "role": "admin",
+                "select": {
+                  "filter": null
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

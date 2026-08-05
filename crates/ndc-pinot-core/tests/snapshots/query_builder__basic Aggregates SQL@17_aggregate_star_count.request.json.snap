@@ -1,0 +1,11 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: pretty_print_sql(&aggregates.to_string())
+input_file: crates/ndc-pinot-core/tests/query_builder/basic/17_aggregate_star_count.request.json
+---
+SET
+  enableNullHandling = true;
+SELECT
+  COUNT(*) AS "count"
+FROM
+  "orders"

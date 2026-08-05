@@ -1,0 +1,13 @@
+---
+source: crates/common/tests/common.rs
+expression: capabilities_response()
+---
+version: 0.1.6
+capabilities:
+  query:
+    aggregates: {}
+    variables: {}
+    explain: {}
+    nested_fields: {}
+    exists: {}
+  mutation: {}

@@ -1,0 +1,23 @@
+[workspace]
+members = [
+  "crates/ndc-pinot",
+  "crates/ndc-pinot-cli",
+  "crates/ndc-pinot-core",
+  "crates/common",
+]
+resolver = "2"
+
+package.version = "0.1.0"
+package.edition = "2021"
+
+[workspace.dependencies]
+ndc-models = { git = "http://github.com/hasura/ndc-spec.git", tag = "v0.1.6" }
+ndc-sdk = { git = "https://github.com/hasura/ndc-sdk-rs", tag = "v0.5.2", package = "ndc-sdk", features = [
+  "rustls",
+], default-features = false }
+ndc-sdk-core = { git = "https://github.com/hasura/ndc-sdk-rs", tag = "v0.5.2", package = "ndc-sdk-core", default-features = false }
+
+# insta performs better in release mode
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3

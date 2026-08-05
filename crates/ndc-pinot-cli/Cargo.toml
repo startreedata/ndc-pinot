@@ -1,0 +1,20 @@
+[package]
+name = "ndc-pinot-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "hasura-pinot"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+common = { path = "../common" }
+ndc-pinot-core = { path = "../ndc-pinot-core" }
+ndc-models = { workspace = true }
+ndc-sdk-core = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+schemars = { version = "0.8", features = ["indexmap2", "preserve_order"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }

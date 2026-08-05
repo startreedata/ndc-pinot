@@ -1,0 +1,452 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: schema
+---
+scalar_types:
+  BIG_DECIMAL:
+    representation:
+      type: bigdecimal
+    aggregate_functions:
+      avg:
+        result_type:
+          type: named
+          name: DOUBLE
+      max:
+        result_type:
+          type: named
+          name: BIG_DECIMAL
+      min:
+        result_type:
+          type: named
+          name: BIG_DECIMAL
+      sum:
+        result_type:
+          type: named
+          name: DOUBLE
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: BIG_DECIMAL
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: BIG_DECIMAL
+      _in:
+        type: in
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: BIG_DECIMAL
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: BIG_DECIMAL
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: BIG_DECIMAL
+  BOOLEAN:
+    representation:
+      type: boolean
+    aggregate_functions: {}
+    comparison_operators:
+      _eq:
+        type: equal
+      _in:
+        type: in
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: BOOLEAN
+  BYTES:
+    representation:
+      type: bytes
+    aggregate_functions: {}
+    comparison_operators:
+      _eq:
+        type: equal
+      _in:
+        type: in
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: BYTES
+  DOUBLE:
+    representation:
+      type: float64
+    aggregate_functions:
+      avg:
+        result_type:
+          type: named
+          name: DOUBLE
+      max:
+        result_type:
+          type: named
+          name: DOUBLE
+      min:
+        result_type:
+          type: named
+          name: DOUBLE
+      sum:
+        result_type:
+          type: named
+          name: DOUBLE
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: DOUBLE
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: DOUBLE
+      _in:
+        type: in
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: DOUBLE
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: DOUBLE
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: DOUBLE
+  FLOAT:
+    representation:
+      type: float32
+    aggregate_functions:
+      avg:
+        result_type:
+          type: named
+          name: DOUBLE
+      max:
+        result_type:
+          type: named
+          name: FLOAT
+      min:
+        result_type:
+          type: named
+          name: FLOAT
+      sum:
+        result_type:
+          type: named
+          name: DOUBLE
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: FLOAT
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: FLOAT
+      _in:
+        type: in
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: FLOAT
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: FLOAT
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: FLOAT
+  INT:
+    representation:
+      type: int32
+    aggregate_functions:
+      avg:
+        result_type:
+          type: named
+          name: DOUBLE
+      max:
+        result_type:
+          type: named
+          name: INT
+      min:
+        result_type:
+          type: named
+          name: INT
+      sum:
+        result_type:
+          type: named
+          name: DOUBLE
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: INT
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: INT
+      _in:
+        type: in
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: INT
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: INT
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: INT
+  JSON:
+    representation:
+      type: json
+    aggregate_functions: {}
+    comparison_operators:
+      _eq:
+        type: equal
+      _in:
+        type: in
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: JSON
+  LONG:
+    representation:
+      type: int64
+    aggregate_functions:
+      avg:
+        result_type:
+          type: named
+          name: DOUBLE
+      max:
+        result_type:
+          type: named
+          name: LONG
+      min:
+        result_type:
+          type: named
+          name: LONG
+      sum:
+        result_type:
+          type: named
+          name: DOUBLE
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: LONG
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: LONG
+      _in:
+        type: in
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: LONG
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: LONG
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: LONG
+  STRING:
+    representation:
+      type: string
+    aggregate_functions:
+      max:
+        result_type:
+          type: named
+          name: STRING
+      min:
+        result_type:
+          type: named
+          name: STRING
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: STRING
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: STRING
+      _in:
+        type: in
+      _like:
+        type: custom
+        argument_type:
+          type: named
+          name: STRING
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: STRING
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: STRING
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: STRING
+  TIMESTAMP:
+    representation:
+      type: string
+    aggregate_functions:
+      avg:
+        result_type:
+          type: named
+          name: DOUBLE
+      max:
+        result_type:
+          type: named
+          name: TIMESTAMP
+      min:
+        result_type:
+          type: named
+          name: TIMESTAMP
+      sum:
+        result_type:
+          type: named
+          name: DOUBLE
+    comparison_operators:
+      _eq:
+        type: equal
+      _gt:
+        type: custom
+        argument_type:
+          type: named
+          name: TIMESTAMP
+      _gte:
+        type: custom
+        argument_type:
+          type: named
+          name: TIMESTAMP
+      _in:
+        type: in
+      _lt:
+        type: custom
+        argument_type:
+          type: named
+          name: TIMESTAMP
+      _lte:
+        type: custom
+        argument_type:
+          type: named
+          name: TIMESTAMP
+      _neq:
+        type: custom
+        argument_type:
+          type: named
+          name: TIMESTAMP
+object_types:
+  orders:
+    description: "Customer orders, one row per order."
+    fields:
+      createdAt:
+        type:
+          type: nullable
+          underlying_type:
+            type: named
+            name: TIMESTAMP
+      customerId:
+        type:
+          type: nullable
+          underlying_type:
+            type: named
+            name: STRING
+      isPriority:
+        type:
+          type: nullable
+          underlying_type:
+            type: named
+            name: BOOLEAN
+      orderId:
+        type:
+          type: named
+          name: LONG
+      status:
+        type:
+          type: nullable
+          underlying_type:
+            type: named
+            name: STRING
+      tags:
+        type:
+          type: nullable
+          underlying_type:
+            type: array
+            element_type:
+              type: named
+              name: STRING
+      total:
+        type:
+          type: nullable
+          underlying_type:
+            type: named
+            name: DOUBLE
+collections:
+  - name: orders
+    description: "Customer orders, one row per order."
+    arguments: {}
+    type: orders
+    uniqueness_constraints:
+      orders_primary_key:
+        unique_columns:
+          - orderId
+    foreign_keys: {}
+functions: []
+procedures: []

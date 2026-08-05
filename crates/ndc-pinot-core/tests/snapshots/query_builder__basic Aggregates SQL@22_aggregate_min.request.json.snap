@@ -1,0 +1,11 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: pretty_print_sql(&aggregates.to_string())
+input_file: crates/ndc-pinot-core/tests/query_builder/basic/22_aggregate_min.request.json
+---
+SET
+  enableNullHandling = true;
+SELECT
+  MIN("total") AS "totalMin"
+FROM
+  "orders"

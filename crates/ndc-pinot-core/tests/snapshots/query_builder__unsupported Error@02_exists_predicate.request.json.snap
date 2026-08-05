@@ -1,0 +1,6 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: err.to_string()
+input_file: crates/ndc-pinot-core/tests/query_builder/unsupported/02_exists_predicate.request.json
+---
+"exists" predicates are not supported: this connector does not support relationships or nested-collection columns

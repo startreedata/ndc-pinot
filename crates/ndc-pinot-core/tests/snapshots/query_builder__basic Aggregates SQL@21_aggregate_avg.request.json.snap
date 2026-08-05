@@ -1,0 +1,11 @@
+---
+source: crates/ndc-pinot-core/tests/query_builder.rs
+expression: pretty_print_sql(&aggregates.to_string())
+input_file: crates/ndc-pinot-core/tests/query_builder/basic/21_aggregate_avg.request.json
+---
+SET
+  enableNullHandling = true;
+SELECT
+  AVG("total") AS "totalAvg"
+FROM
+  "orders"
