@@ -17,9 +17,20 @@
 # locally against the docker-compose stack. It is deliberately dependency-light
 # (bash + curl + jq) so it works the same everywhere.
 #
+# The script is self-gating: it waits for the connector to answer and for the
+# seeded rows to actually be queryable before it asserts anything, so it's safe
+# to run immediately after backgrounding the connector / seeding (locally or in
+# CI) without racing startup or Pinot's segment-load lag.
+#
 # Configuration (env vars, all optional):
 #   CONNECTOR_URL   NDC connector base URL   (default http://localhost:5000)
 #   BROKER_URL      Pinot broker base URL    (default http://localhost:8099)
+#   READY_TIMEOUT   seconds to wait for connector + data readiness (default 120)
+#
+# Note: 5000 matches the port the docker-compose stack maps and CI sets via
+# HASURA_CONNECTOR_PORT. The ndc-sdk's own default is 8080, so if you start the
+# connector with a bare `serve` and no port override, point CONNECTOR_URL at
+# http://localhost:8080 (or start it with HASURA_CONNECTOR_PORT=5000).
 #
 # Usage:
 #   ./ci/integration/smoke-test.sh
@@ -28,6 +39,7 @@ set -euo pipefail
 
 CONNECTOR_URL="${CONNECTOR_URL:-http://localhost:5000}"
 BROKER_URL="${BROKER_URL:-http://localhost:8099}"
+READY_TIMEOUT="${READY_TIMEOUT:-120}"
 
 pass=0
 fail=0
@@ -63,15 +75,56 @@ ndc_query() {
     --data-binary "$1"
 }
 
+# count(*) over the seeded table, via the broker. Echoes 0 (not an error) when
+# the segment hasn't loaded yet, so callers can poll on it.
+orders_count() {
+  curl -sS -H 'Content-Type: application/json' \
+    -d '{"sql":"select count(*) from orders"}' \
+    "${BROKER_URL}/query/sql" 2>/dev/null | jq -r '.resultTable.rows[0][0] // 0'
+}
+
 echo "==> Connector: ${CONNECTOR_URL}"
 echo "==> Broker:    ${BROKER_URL}"
+
+# --- readiness -------------------------------------------------------------
+# Make the script robust to being launched the instant the connector is
+# backgrounded and the segment is pushed: wait for the connector's /health and
+# for the seeded rows to be queryable before asserting. seed.sh returns as soon
+# as the segment *push* is accepted, but the Pinot server needs a moment to
+# load that segment before its rows show up - poll rather than race it.
+echo
+echo "[wait] connector /health and seeded data become ready (timeout ${READY_TIMEOUT}s)"
+deadline_steps=$(( READY_TIMEOUT / 2 ))
+connector_ready=""
+for _ in $(seq 1 "$deadline_steps"); do
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' "${CONNECTOR_URL}/health" 2>/dev/null)" = "200" ]; then
+    connector_ready=1
+    break
+  fi
+  sleep 2
+done
+if [ -z "$connector_ready" ]; then
+  echo "  ${RED}✗${RESET} connector did not become healthy at ${CONNECTOR_URL} within ${READY_TIMEOUT}s"
+  exit 1
+fi
+data_ready=""
+for _ in $(seq 1 "$deadline_steps"); do
+  if [ "$(orders_count)" = "5" ]; then
+    data_ready=1
+    break
+  fi
+  sleep 2
+done
+if [ -z "$data_ready" ]; then
+  echo "  ${RED}✗${RESET} seeded rows not queryable via the broker within ${READY_TIMEOUT}s (last count=$(orders_count))"
+  exit 1
+fi
+echo "  ${GREEN}✓${RESET} connector healthy and seeded data queryable"
 
 # --- 0. sanity: broker actually has the seeded data ------------------------
 echo
 echo "[data] sample table is populated"
-row_count="$(curl -sS -H 'Content-Type: application/json' \
-  -d '{"sql":"select count(*) from orders"}' \
-  "${BROKER_URL}/query/sql" | jq -r '.resultTable.rows[0][0]')"
+row_count="$(orders_count)"
 assert_eq "orders has 5 rows in Pinot" "$row_count" "5"
 
 # --- 1. capabilities -------------------------------------------------------
@@ -173,6 +226,29 @@ explain="$(curl -sS -X POST "${CONNECTOR_URL}/query/explain" \
   }')"
 assert_eq "explain output contains a SELECT ... FROM \"orders\"" \
   "$(echo "$explain" | jq -r '.details["Rows SQL"] | test("SELECT .* FROM \"orders\""; "i")')" "true"
+
+# --- 7. multi-stage query engine (Pinot v2) --------------------------------
+# The connector itself emits single-table, single-stage SQL (it declares no
+# relationships and leaves cross-collection joins to the Hasura engine), so we
+# exercise Pinot's multi-stage engine directly against the broker to prove the
+# CI/dev stack is a genuine distributed cluster - a JOIN forces the broker to
+# plan across the *server*, which only works once the server has registered and
+# the segment is ONLINE. A single-stage engine rejects this JOIN outright.
+#
+# Self-join on customerId: cust-1 and cust-2 each have 2 orders (2 ordered
+# pairs each = 4); cust-3 has 1 order (no pair). So 4 pairs, and every row must
+# share a customerId across the two sides.
+echo
+echo "[multi-stage] SET useMultistageEngine=true self-join runs on the cluster"
+ms="$(curl -sS -H 'Content-Type: application/json' \
+  -d '{"sql":"SET useMultistageEngine=true; SELECT a.customerId, count(*) FROM orders a JOIN orders b ON a.customerId = b.customerId WHERE a.orderId <> b.orderId GROUP BY a.customerId ORDER BY a.customerId"}' \
+  "${BROKER_URL}/query/sql")"
+assert_eq "multi-stage join executes with no exceptions" \
+  "$(echo "$ms" | jq -c '.exceptions')" '[]'
+assert_eq "multi-stage join returns 4 same-customer order pairs" \
+  "$(echo "$ms" | jq '[.resultTable.rows[][1]] | add')" "4"
+assert_eq "multi-stage join pairs only within cust-1 and cust-2" \
+  "$(echo "$ms" | jq -c '[.resultTable.rows[][0]] | sort')" '["cust-1","cust-2"]'
 
 # --- summary ---------------------------------------------------------------
 echo

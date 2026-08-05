@@ -43,7 +43,7 @@ cargo fmt --check
 
 In addition to the unit suite, there's an end-to-end integration test that stands up a real Pinot cluster, seeds the sample `orders` table, runs the connector against it, and drives real NDC queries through the connector's HTTP API — proving the full path `NDC request → generated Pinot SQL → Pinot → mapped NDC response`, not just that SQL generation is correct in isolation.
 
-The assertions live in a single dependency-light script ([`ci/integration/smoke-test.sh`](../ci/integration/smoke-test.sh), just `bash` + `curl` + `jq`) so the same checks run in CI and locally.
+The assertions live in a single dependency-light script ([`ci/integration/smoke-test.sh`](../ci/integration/smoke-test.sh), just `bash` + `curl` + `jq`) so the same checks run in CI and locally. The script is self-gating: it waits for the connector's `/health` and for the seeded rows to actually be queryable before asserting anything, so you can launch it right after backgrounding the connector — it won't race connector startup or Pinot's segment-load lag.
 
 To run it locally against the Docker Compose stack:
 
@@ -55,15 +55,23 @@ docker compose -f docker-compose.yaml -f docker-compose.ci.yaml up -d \
 # 2. seed the sample orders table (waits for the controller first)
 ./tests/pinot-db/init/seed.sh
 
-# 3. start the connector against the cluster
+# 3. start the connector against the cluster.
+#    HASURA_CONNECTOR_PORT=5000 makes the connector listen on the port the
+#    smoke test targets by default (the ndc-sdk's own default is 8080).
 HASURA_CONFIGURATION_DIRECTORY="$PWD/tests/config" \
+HASURA_CONNECTOR_PORT=5000 \
 PINOT_CONTROLLER_URL=http://localhost:9000 \
 PINOT_BROKER_URL=http://localhost:8099 \
   cargo run --package ndc-pinot -- serve &
 
-# 4. run the smoke test
+# 4. run the smoke test (it waits for the connector + seeded data to be ready)
 ./ci/integration/smoke-test.sh
 ```
+
+> If port 5000 is taken (on macOS, Control Center's AirPlay Receiver listens
+> there), start the connector on another port and point the smoke test at it,
+> e.g. `HASURA_CONNECTOR_PORT=5055 … serve &` then
+> `CONNECTOR_URL=http://localhost:5055 ./ci/integration/smoke-test.sh`.
 
 ## CI
 
@@ -72,7 +80,7 @@ CI runs three checks (see [`.github/workflows/`](../.github/workflows/)):
 | Workflow | What it runs |
 | --- | --- |
 | `build_and_test.yaml` | `cargo test --all-features` and `cargo fmt --check` — fast, no Docker. |
-| `integration_test.yaml` | The end-to-end integration test above: brings up the Pinot cluster via Docker Compose, seeds it, starts the connector, and runs `ci/integration/smoke-test.sh`. |
+| `integration_test.yaml` | The end-to-end integration test above: brings up the Pinot cluster via Docker Compose, waits for a server to register, seeds it, starts the connector, and runs `ci/integration/smoke-test.sh`. The smoke test also drives a `useMultistageEngine=true` join straight against the broker, which confirms the stack is a genuine distributed cluster (a join has to be planned across the server) rather than a single-process shim. |
 
 The `docker-compose.ci.yaml` override used by the integration workflow shrinks each Pinot JVM's heap (the base image defaults to `-Xms4G -Xmx4G` per process, which OOMs a standard CI runner when a controller, broker and server all start at once). It's a drop-in override — layer it on top of the base file with a second `-f` as shown above.
 

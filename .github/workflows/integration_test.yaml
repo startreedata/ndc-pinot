@@ -64,6 +64,27 @@ jobs:
             done
           done
 
+      # The health wait above only covers the controller and broker. Seeding
+      # pushes an OFFLINE segment that has to be assigned to and loaded by the
+      # server, and docker-compose only orders the server *after the broker
+      # container starts*, not after the server has registered with the
+      # cluster. Wait for the controller to report a live server instance so the
+      # seed job has somewhere to place the segment.
+      - name: Wait for a Pinot server to register
+        run: |
+          echo "==> Waiting for a live Pinot server instance"
+          for i in $(seq 1 60); do
+            if curl -s "${PINOT_CONTROLLER_URL}/instances" \
+              | jq -e '.instances[] | select(startswith("Server_"))' >/dev/null 2>&1; then
+              echo "    server registered after $((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::no Pinot server registered with the controller in time"
+          curl -s "${PINOT_CONTROLLER_URL}/instances" || true
+          exit 1
+
       - name: Seed sample "orders" table
         run: ./tests/pinot-db/init/seed.sh
 
