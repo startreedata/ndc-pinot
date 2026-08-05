@@ -1,0 +1,149 @@
+name: "Integration Test"
+
+# End-to-end integration / quickstart check.
+#
+# Unlike the unit-test suite in build_and_test.yaml (which never touches a real
+# Pinot cluster), this workflow stands up an actual Pinot cluster, seeds the
+# sample "orders" table, runs the connector against it, and drives real NDC
+# queries through the connector's HTTP API - proving the full path
+#   NDC request -> generated Pinot SQL -> Pinot -> mapped NDC response
+# works, not just that SQL generation is correct in isolation.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  # Allow manual runs from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    name: end-to-end query
+    runs-on: ubuntu-latest
+    env:
+      PINOT_CONTROLLER_URL: http://localhost:9000
+      PINOT_BROKER_URL: http://localhost:8099
+      CONNECTOR_URL: http://localhost:5000
+      HASURA_CONNECTOR_PORT: "5000"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      # Build only the server binary we actually run below. Cached across runs
+      # by setup-rust-toolchain.
+      - name: Build connector binary
+        run: cargo build --locked --package ndc-pinot
+
+      # docker-compose.ci.yaml shrinks the Pinot JVM heaps so the three-process
+      # cluster fits comfortably on a GitHub-hosted runner (see that file).
+      - name: Start Pinot cluster
+        run: |
+          docker compose -f docker-compose.yaml -f docker-compose.ci.yaml \
+            up -d zookeeper pinot-controller pinot-broker pinot-server
+
+      - name: Wait for Pinot to be healthy
+        run: |
+          # Controller first (it must be up before we can create the table),
+          # then the broker (the query entry point the connector talks to).
+          for svc in "controller ${PINOT_CONTROLLER_URL}" "broker ${PINOT_BROKER_URL}"; do
+            name="${svc%% *}"; url="${svc##* }"
+            echo "==> Waiting for Pinot ${name} at ${url}/health"
+            for i in $(seq 1 60); do
+              if [ "$(curl -s -o /dev/null -w '%{http_code}' "${url}/health")" = "200" ]; then
+                echo "    ${name} healthy after $((i * 5))s"
+                break
+              fi
+              if [ "$i" -eq 60 ]; then
+                echo "::error::Pinot ${name} did not become healthy in time"
+                docker compose logs "pinot-${name}"
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+
+      # The health wait above only covers the controller and broker. Seeding
+      # pushes an OFFLINE segment that has to be assigned to and loaded by the
+      # server, and docker-compose only orders the server *after the broker
+      # container starts*, not after the server has registered with the
+      # cluster. Wait for the controller to report a live server instance so the
+      # seed job has somewhere to place the segment.
+      - name: Wait for a Pinot server to register
+        run: |
+          echo "==> Waiting for a live Pinot server instance"
+          for i in $(seq 1 60); do
+            if curl -s "${PINOT_CONTROLLER_URL}/instances" \
+              | jq -e '.instances[] | select(startswith("Server_"))' >/dev/null 2>&1; then
+              echo "    server registered after $((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::no Pinot server registered with the controller in time"
+          curl -s "${PINOT_CONTROLLER_URL}/instances" || true
+          exit 1
+
+      - name: Seed sample "orders" table
+        run: ./tests/pinot-db/init/seed.sh
+
+      # seed.sh returns as soon as the segment *push* is accepted, but the Pinot
+      # server needs a moment to load that segment before its rows are
+      # queryable. Poll the broker until the seeded rows actually show up, so
+      # the smoke test's data assertions are deterministic rather than racing
+      # ingestion.
+      - name: Wait for seeded data to be queryable
+        run: |
+          echo "==> Waiting for the 5 seeded rows to be queryable via the broker"
+          for i in $(seq 1 30); do
+            count="$(curl -s -H 'Content-Type: application/json' \
+              -d '{"sql":"select count(*) from orders"}' \
+              "${PINOT_BROKER_URL}/query/sql" \
+              | jq -r '.resultTable.rows[0][0] // 0')"
+            if [ "$count" = "5" ]; then
+              echo "    data queryable after $((i * 2))s (count=${count})"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::seeded data did not become queryable in time (last count=${count:-unknown})"
+          curl -s -H 'Content-Type: application/json' \
+            -d '{"sql":"select count(*) from orders"}' "${PINOT_BROKER_URL}/query/sql" || true
+          exit 1
+
+      - name: Start connector
+        run: |
+          HASURA_CONFIGURATION_DIRECTORY="${GITHUB_WORKSPACE}/tests/config" \
+          RUST_LOG=info \
+          ./target/debug/ndc-pinot serve > /tmp/ndc-pinot.log 2>&1 &
+          echo "==> Waiting for connector at ${CONNECTOR_URL}/health"
+          for i in $(seq 1 30); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' "${CONNECTOR_URL}/health")" = "200" ]; then
+              echo "    connector healthy after $((i * 2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::connector did not become healthy in time"
+          cat /tmp/ndc-pinot.log
+          exit 1
+
+      - name: Run integration smoke test
+        run: ./ci/integration/smoke-test.sh
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "===== connector log ====="
+          cat /tmp/ndc-pinot.log || true
+          echo "===== docker compose ps ====="
+          docker compose ps || true
+          echo "===== pinot-broker log ====="
+          docker compose logs --tail=100 pinot-broker || true
+          echo "===== pinot-server log ====="
+          docker compose logs --tail=100 pinot-server || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v || true

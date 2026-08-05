@@ -1,0 +1,24 @@
+# CI / low-memory override for the Pinot cluster.
+#
+# The apachepinot/pinot image defaults to `-Xms4G -Xmx4G` per process. With a
+# controller, broker and server that's ~12G of heap reservation, which OOMs the
+# small VMs used by CI runners (and by Docker Desktop on developer laptops).
+#
+# This override shrinks each JVM to something a ~7G CI runner can host while
+# still comfortably serving the tiny sample dataset the integration test loads.
+# It only touches the Pinot cluster services; apply it on top of the base file:
+#
+#   docker compose -f docker-compose.yaml -f docker-compose.ci.yaml up -d \
+#     zookeeper pinot-controller pinot-broker pinot-server
+services:
+  pinot-controller:
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m -Dpinot.admin.system.exit=false"
+
+  pinot-broker:
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m -Dpinot.admin.system.exit=false"
+
+  pinot-server:
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx1g -Dpinot.admin.system.exit=false"
