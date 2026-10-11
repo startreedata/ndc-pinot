@@ -5,6 +5,7 @@ members = [
   "crates/ndc-pinot-core",
   "crates/common",
 ]
+exclude = ["vendor/ndc-sdk"]
 resolver = "2"
 
 package.version = "0.1.0"
@@ -13,7 +14,7 @@ package.license = "Apache-2.0"
 
 [workspace.dependencies]
 ndc-models = { git = "http://github.com/hasura/ndc-spec.git", tag = "v0.1.6" }
-ndc-sdk = { git = "https://github.com/hasura/ndc-sdk-rs", tag = "v0.5.2", package = "ndc-sdk", default-features = false }
+ndc-sdk = { path = "vendor/ndc-sdk", default-features = false }
 ndc-sdk-core = { git = "https://github.com/hasura/ndc-sdk-rs", tag = "v0.5.2", package = "ndc-sdk-core", default-features = false }
 
 # insta performs better in release mode

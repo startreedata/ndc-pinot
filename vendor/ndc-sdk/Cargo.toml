@@ -1,0 +1,40 @@
+# Modified telemetry dependency backport; see README.md for source and scope.
+[package]
+name = "ndc-sdk"
+version = "0.5.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[workspace]
+
+[features]
+default = ["native-tls", "ndc-test"]
+native-tls = ["reqwest/native-tls"]
+rustls = ["reqwest/rustls"]
+ndc-test = ["dep:ndc-test", "ndc-sdk-core/ndc-test"]
+
+[dependencies]
+ndc-sdk-core = { git = "https://github.com/hasura/ndc-sdk-rs", tag = "v0.5.2", default-features = false, features = ["axum"] }
+ndc-models = { git = "http://github.com/hasura/ndc-spec.git", tag = "v0.1.6" }
+ndc-test = { git = "http://github.com/hasura/ndc-spec.git", tag = "v0.1.6", optional = true }
+async-trait = "0.1"
+axum = { version = "0.6", features = ["http2"] }
+axum-extra = "0.8"
+clap = { version = "4", features = ["derive", "env"] }
+http = "0.2"
+opentelemetry = "0.33"
+opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["trace", "internal-logs", "grpc-tonic", "gzip-tonic", "tls-ring", "tls-roots", "http-proto", "reqwest-client"] }
+opentelemetry_sdk = { version = "0.33.1", features = ["rt-tokio", "experimental_trace_batch_span_processor_with_async_runtime"] }
+opentelemetry-propagator-b3 = "0.33.1"
+prometheus = "0.14"
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "charset", "http2", "system-proxy"] }
+serde_json = { version = "1", features = ["raw_value"] }
+thiserror = "1"
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "signal"] }
+tonic = { version = "0.14", default-features = false, features = ["tls-native-roots"] }
+tower-http = { version = "0.4", features = ["cors", "limit", "trace", "validate-request"] }
+tracing = "0.1"
+tracing-opentelemetry = "0.34"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi", "env-filter", "fmt", "json"] }
+url = "2.5"
