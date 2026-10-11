@@ -22,6 +22,7 @@ FROM us-docker.pkg.dev/hasura-container-images/external-images/docker.io/library
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/target/release/ndc-pinot /usr/local/bin
+COPY LICENSE /app/LICENSE
 
 RUN mkdir -p /etc/connector
 ENV HASURA_CONFIGURATION_DIRECTORY=/etc/connector
