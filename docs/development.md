@@ -75,14 +75,28 @@ PINOT_BROKER_URL=http://localhost:8099 \
 
 ## CI
 
-CI runs three checks (see [`.github/workflows/`](../.github/workflows/)):
+CI includes the following workflows (see [`.github/workflows/`](../.github/workflows/)):
 
 | Workflow | What it runs |
 | --- | --- |
 | `build_and_test.yaml` | `cargo test --all-features` and `cargo fmt --check` — fast, no Docker. |
 | `integration_test.yaml` | The end-to-end integration test above: brings up the Pinot cluster via Docker Compose, waits for a server to register, seeds it, starts the connector, and runs `ci/integration/smoke-test.sh`. The smoke test also drives a `useMultistageEngine=true` join straight against the broker, which confirms the stack is a genuine distributed cluster (a join has to be planned across the server) rather than a single-process shim. |
+| `release.yaml` | On a version tag, runs formatting and unit tests, builds the CLI for Linux/macOS (AMD64 and ARM64) and Windows (AMD64), publishes a multi-platform connector image to GHCR, and publishes the Hasura connector definition, CLI manifest, binaries, and checksums as a GitHub release. |
 
 The `docker-compose.ci.yaml` override used by the integration workflow shrinks each Pinot JVM's heap (the base image defaults to `-Xms4G -Xmx4G` per process, which OOMs a standard CI runner when a controller, broker and server all start at once). It's a drop-in override — layer it on top of the base file with a second `-f` as shown above.
+
+### Publishing a release
+
+Set `workspace.package.version` in `Cargo.toml` to the release version, run `cargo check` to update `Cargo.lock`, and commit both files. Tag the merged commit:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag must match the workspace version; prerelease tags such as `v0.2.0-rc.1` are supported and create GitHub prereleases. The workflow uses Rust `1.88.0`, matching the Dockerfile, and the repository's `GITHUB_TOKEN` with job-specific release/package write permissions. It publishes `ghcr.io/startreedata/ndc-pinot:v0.1.0` for Linux AMD64 and ARM64, and pins the image digest in `connector-metadata.yaml` inside `connector-definition.tgz`. Make the GHCR package public after its first publication so Hasura users can pull it without credentials.
+
+To retry a failed release, rerun its workflow from the Actions tab. If an asset upload failure left a draft GitHub release, delete that draft before retrying. A manual run must select an existing version tag (for example, `gh workflow run release.yaml --ref v0.1.0`).
 
 ## Running the manual local-testing stack
 

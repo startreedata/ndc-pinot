@@ -1,0 +1,189 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  # Select an existing version tag as the ref when running manually.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    outputs:
+      image: ${{ steps.release.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: "1.88.0"
+          components: rustfmt
+      - name: Validate release tag
+        id: release
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ "$REF_TYPE" != tag || ! "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Releases require a version tag, such as v0.1.0 or v0.2.0-rc.1"
+            exit 1
+          fi
+          version="$(cargo metadata --locked --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "ndc-pinot") | .version')"
+          if [[ "${RELEASE_VERSION#v}" != "$version" ]]; then
+            echo "::error::Tag $RELEASE_VERSION does not match workspace version $version"
+            exit 1
+          fi
+          repository="$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "image=ghcr.io/$repository" >> "$GITHUB_OUTPUT"
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --workspace --all-features
+
+  cli:
+    needs: test
+    name: CLI (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    env:
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-15
+            extension: ""
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+            extension: ""
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+            extension: ""
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+            extension: ""
+          - target: x86_64-pc-windows-msvc
+            runner: windows-2022
+            extension: .exe
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: "1.88.0"
+          target: ${{ matrix.target }}
+      - name: Install musl compiler
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      - name: Build and check CLI
+        env:
+          TARGET: ${{ matrix.target }}
+          EXTENSION: ${{ matrix.extension }}
+        run: |
+          cargo build --locked --release --package ndc-pinot-cli --target "$TARGET"
+          binary="target/$TARGET/release/hasura-pinot$EXTENSION"
+          "$binary" --help
+          mkdir -p dist
+          cp "$binary" "dist/ndc-pinot-cli-$TARGET$EXTENSION"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  image:
+    needs: [test, cli]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish connector image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ needs.test.outputs.image }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    needs: [test, cli, image]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: dist
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
+      - name: Package connector definition and CLI manifest
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_HASH: ${{ github.sha }}
+          DOCKER_IMAGE: ${{ needs.test.outputs.image }}@${{ needs.image.outputs.digest }}
+        run: |
+          CLI_VERSION="$RELEASE_VERSION"
+          MACOS_ARM64_SHA256="$(sha256sum dist/ndc-pinot-cli-aarch64-apple-darwin | cut -d ' ' -f 1)"
+          MACOS_AMD64_SHA256="$(sha256sum dist/ndc-pinot-cli-x86_64-apple-darwin | cut -d ' ' -f 1)"
+          LINUX_ARM64_SHA256="$(sha256sum dist/ndc-pinot-cli-aarch64-unknown-linux-musl | cut -d ' ' -f 1)"
+          LINUX_AMD64_SHA256="$(sha256sum dist/ndc-pinot-cli-x86_64-unknown-linux-musl | cut -d ' ' -f 1)"
+          WINDOWS_AMD64_SHA256="$(sha256sum dist/ndc-pinot-cli-x86_64-pc-windows-msvc.exe | cut -d ' ' -f 1)"
+          export CLI_VERSION MACOS_ARM64_SHA256 MACOS_AMD64_SHA256 LINUX_ARM64_SHA256 LINUX_AMD64_SHA256 WINDOWS_AMD64_SHA256
+          envsubst < ci/templates/manifest.yaml > dist/manifest.yaml
+
+          mkdir -p connector-definition/.hasura-connector
+          envsubst < ci/templates/connector-metadata.yaml > connector-definition/.hasura-connector/connector-metadata.yaml
+          chmod +x dist/ndc-pinot-cli-x86_64-unknown-linux-musl
+          dist/ndc-pinot-cli-x86_64-unknown-linux-musl --connector-context-path connector-definition init
+          tar -czf dist/connector-definition.tgz -C connector-definition .
+          CONNECTOR_DEFINITION_HASH="$(sha256sum dist/connector-definition.tgz | cut -d ' ' -f 1)"
+          export CONNECTOR_DEFINITION_HASH
+          envsubst < ci/templates/connector-packaging.json > dist/connector-packaging.json
+          (cd dist && sha256sum ndc-pinot-cli-* manifest.yaml connector-definition.tgz connector-packaging.json > SHA256SUMS)
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          flags=()
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$RELEASE_VERSION" dist/* --verify-tag \
+            --title "$RELEASE_VERSION" --generate-notes "${flags[@]}"
