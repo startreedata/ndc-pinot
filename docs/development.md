@@ -11,7 +11,7 @@ This document details how to build and test this connector locally, and how to r
 ## Clone the repository
 
 ```sh
-git clone https://github.com/hasura/ndc-pinot.git
+git clone https://github.com/startreedata/ndc-pinot.git
 cd ndc-pinot
 ```
 

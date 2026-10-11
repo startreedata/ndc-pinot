@@ -12,17 +12,18 @@ The Hasura DDN CLI will initialize and update the configuration directory for yo
 
 ### Using the `hasura-pinot` CLI executable
 
-You can also run the `hasura-pinot` CLI executable directly. It introspects a Pinot cluster's Controller and Broker REST APIs and writes/updates `configuration.json` accordingly.
+You can also run the `hasura-pinot` CLI executable directly. Its `update` command introspects a Pinot cluster's Controller and Broker REST APIs and writes/updates `configuration.json` accordingly.
 
 ```sh
-hasura-pinot --connector-context-path ./config --controller-url "http://localhost:9000" --broker-url "http://localhost:8099" update
+mkdir -p ./config
+hasura-pinot --connector-context-path ./config update --pinot-controller-url "http://localhost:9000" --pinot-broker-url "http://localhost:8099"
 ```
 
 Available subcommands:
 
 | Command | Purpose |
 | --- | --- |
-| `init` | Create a new configuration directory, introspecting the connected Pinot cluster's tables and schemas. |
+| `init` | Write an empty `configuration.json` plus its `configuration.schema.json` in an existing directory. |
 | `update` | Re-introspect the cluster and update an existing configuration directory. Hand-edited fields (aliases, comments, native queries) are preserved. |
 | `validate` | Check an existing configuration directory for errors without contacting Pinot. |
 | `print-schema-and-capabilities` | Print the NDC schema and capabilities the connector would expose for a given configuration, without starting the server. |
@@ -67,7 +68,7 @@ The configuration file has two top-level maps: `tables` and `queries`. Both map 
 
 ### Tables
 
-Tables are added by introspecting the database provided during `init`/`update` of the configuration directory. Most users don't need to further alter this configuration, but there are a couple of fields worth knowing about:
+Tables are added by introspecting the database provided during `update` of the configuration directory. Most users don't need to further alter this configuration, but there are a couple of fields worth knowing about:
 
 - **Table alias.** The key under `tables` (e.g. `"orders"` above) is the alias the table is exposed under in the graph. This can be renamed and must remain unique; it does not need to match the underlying Pinot table name.
 - **`name`** is the real Pinot table name, without the `_OFFLINE`/`_REALTIME` type suffix Pinot appends internally.
