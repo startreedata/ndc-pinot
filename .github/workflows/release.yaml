@@ -4,14 +4,18 @@ on:
   push:
     tags:
       - "v*"
-  # Select an existing version tag as the ref when running manually.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 defaults:
@@ -22,9 +26,13 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      source_hash: ${{ steps.release.outputs.source_hash }}
       image: ${{ steps.release.outputs.image }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: "1.88.0"
@@ -32,12 +40,16 @@ jobs:
       - name: Validate release tag
         id: release
         env:
-          RELEASE_VERSION: ${{ github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
+          RELEASE_VERSION: ${{ inputs.tag || github.ref_name }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          if [[ "$REF_TYPE" != tag || ! "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          if [[ ! "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Releases require a version tag, such as v0.1.0 or v0.2.0-rc.1"
+            exit 1
+          fi
+          source_hash="$(git rev-parse HEAD)"
+          if ! tag_hash="$(git rev-parse --verify "refs/tags/$RELEASE_VERSION^{commit}")" || [[ "$tag_hash" != "$source_hash" ]]; then
+            echo "::error::Release source must match the existing tag $RELEASE_VERSION"
             exit 1
           fi
           version="$(cargo metadata --locked --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "ndc-pinot") | .version')"
@@ -46,7 +58,11 @@ jobs:
             exit 1
           fi
           repository="$(printf '%s' "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
-          echo "image=ghcr.io/$repository" >> "$GITHUB_OUTPUT"
+          {
+            echo "tag=$RELEASE_VERSION"
+            echo "source_hash=$source_hash"
+            echo "image=ghcr.io/$repository"
+          } >> "$GITHUB_OUTPUT"
       - run: cargo fmt --all -- --check
       - run: cargo test --locked --workspace --all-features
 
@@ -78,6 +94,8 @@ jobs:
             extension: .exe
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.test.outputs.source_hash }}
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: "1.88.0"
@@ -103,17 +121,27 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-  image:
+  image-build:
     needs: [test, cli]
-    runs-on: ubuntu-24.04
+    name: Image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v4
+        with:
+          ref: ${{ needs.test.outputs.source_hash }}
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -125,15 +153,59 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ needs.test.outputs.image }}:${{ github.ref_name }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ needs.test.outputs.image }},push-by-digest=true,name-canonical=true,push=true
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            org.opencontainers.image.revision=${{ needs.test.outputs.source_hash }}
+            org.opencontainers.image.version=${{ needs.test.outputs.tag }}
+          cache-from: type=gha,scope=image-${{ matrix.arch }}
+          cache-to: type=gha,scope=image-${{ matrix.arch }},mode=max
+      - name: Export image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+
+  image:
+    needs: [test, image-build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.merge.outputs.digest }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-digest-*
+          merge-multiple: true
+          path: /tmp/digests
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish multi-platform image
+        id: merge
+        env:
+          IMAGE: ${{ needs.test.outputs.image }}
+          RELEASE_VERSION: ${{ needs.test.outputs.tag }}
+        run: |
+          sources=()
+          for digest in /tmp/digests/*; do
+            sources+=("$IMAGE@sha256:${digest##*/}")
+          done
+          docker buildx imagetools create --tag "$IMAGE:$RELEASE_VERSION" "${sources[@]}"
+          digest="$(docker buildx imagetools inspect "$IMAGE:$RELEASE_VERSION" --format '{{json .Manifest}}' | jq -er '.digest')"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
   release:
     needs: [test, cli, image]
@@ -142,6 +214,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.test.outputs.source_hash }}
       - uses: actions/download-artifact@v8
         with:
           pattern: cli-*
@@ -153,8 +227,8 @@ jobs:
           sudo apt-get install -y gettext-base
       - name: Package connector definition and CLI manifest
         env:
-          RELEASE_VERSION: ${{ github.ref_name }}
-          RELEASE_HASH: ${{ github.sha }}
+          RELEASE_VERSION: ${{ needs.test.outputs.tag }}
+          RELEASE_HASH: ${{ needs.test.outputs.source_hash }}
           DOCKER_IMAGE: ${{ needs.test.outputs.image }}@${{ needs.image.outputs.digest }}
         run: |
           CLI_VERSION="$RELEASE_VERSION"
@@ -179,8 +253,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.test.outputs.tag }}
+          RELEASE_HASH: ${{ needs.test.outputs.source_hash }}
         run: |
+          git fetch --no-tags origin "refs/tags/$RELEASE_VERSION"
+          if [[ "$(git rev-parse 'FETCH_HEAD^{commit}')" != "$RELEASE_HASH" ]]; then
+            echo "::error::Release tag $RELEASE_VERSION changed during the build"
+            exit 1
+          fi
           flags=()
           if [[ "$RELEASE_VERSION" == *-* ]]; then
             flags+=(--prerelease)
