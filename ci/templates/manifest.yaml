@@ -5,35 +5,35 @@ homepage: https://hasura.io/connectors/pinot
 hidden: true
 platforms:
   - selector: darwin-arm64
-    uri: "https://github.com/hasura/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-aarch64-apple-darwin"
+    uri: "https://github.com/startreedata/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-aarch64-apple-darwin"
     sha256: "${MACOS_ARM64_SHA256}"
     bin: "hasura-pinot"
     files:
       - from: "./ndc-pinot-cli-aarch64-apple-darwin"
         to: "hasura-pinot"
   - selector: linux-arm64
-    uri: "https://github.com/hasura/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-aarch64-unknown-linux-musl"
+    uri: "https://github.com/startreedata/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-aarch64-unknown-linux-musl"
     sha256: "${LINUX_ARM64_SHA256}"
     bin: "hasura-pinot"
     files:
       - from: "./ndc-pinot-cli-aarch64-unknown-linux-musl"
         to: "hasura-pinot"
   - selector: darwin-amd64
-    uri: "https://github.com/hasura/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-x86_64-apple-darwin"
+    uri: "https://github.com/startreedata/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-x86_64-apple-darwin"
     sha256: "${MACOS_AMD64_SHA256}"
     bin: "hasura-pinot"
     files:
       - from: "./ndc-pinot-cli-x86_64-apple-darwin"
         to: "hasura-pinot"
   - selector: windows-amd64
-    uri: "https://github.com/hasura/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-x86_64-pc-windows-msvc.exe"
+    uri: "https://github.com/startreedata/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-x86_64-pc-windows-msvc.exe"
     sha256: "${WINDOWS_AMD64_SHA256}"
     bin: "hasura-pinot.exe"
     files:
       - from: "./ndc-pinot-cli-x86_64-pc-windows-msvc.exe"
         to: "hasura-pinot.exe"
   - selector: linux-amd64
-    uri: "https://github.com/hasura/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-x86_64-unknown-linux-musl"
+    uri: "https://github.com/startreedata/ndc-pinot/releases/download/${CLI_VERSION}/ndc-pinot-cli-x86_64-unknown-linux-musl"
     sha256: "${LINUX_AMD64_SHA256}"
     bin: "hasura-pinot"
     files:
