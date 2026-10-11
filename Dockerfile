@@ -7,11 +7,13 @@ FROM chef AS planner
 COPY Cargo.toml ./
 COPY Cargo.lock ./
 COPY crates crates
+COPY vendor vendor
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 ARG RUSTFLAGS
 COPY --from=planner /app/recipe.json recipe.json
+COPY vendor vendor
 RUN cargo chef cook --profile release --recipe-path recipe.json
 COPY Cargo.toml ./
 COPY Cargo.lock ./
