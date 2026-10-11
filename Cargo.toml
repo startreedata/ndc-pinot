@@ -9,6 +9,7 @@ resolver = "2"
 
 package.version = "0.1.0"
 package.edition = "2021"
+package.license = "Apache-2.0"
 
 [workspace.dependencies]
 ndc-models = { git = "http://github.com/hasura/ndc-spec.git", tag = "v0.1.6" }

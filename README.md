@@ -39,3 +39,7 @@ This connector is intentionally narrow in scope for v1. The limitations below ar
 - **Native queries are a lightweight escape hatch, not a SQL dialect.** Native queries are plain `.sql` files with `{{argument_name}}` placeholders that get substituted with escaped SQL literals at query time. There's no query parsing or type inference — you declare the argument types and the result columns yourself in `configuration.json`.
 
 See [`docs/usage.md`](./docs/usage.md) for the full feature-support checklist.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](./LICENSE).
